@@ -7,7 +7,7 @@ const CalendarView = ({ jobs }) => {
 
   // Convert to yyyy-mm-dd for comparison
   const selectedDate = value.toLocaleDateString("en-CA");
-  const jobsOnDate = jobs.filter((job) => job.deadline === selectedDate);
+  const jobsOnDate = (jobs || []).filter((job) => job.deadline === selectedDate);
 
   return (
     <div className="bg-gray-300 dark:bg-gray-800 dark:text-black rounded shadow p-4">
@@ -16,7 +16,7 @@ const CalendarView = ({ jobs }) => {
         value={value}
         tileContent={({ date }) => {
           const d = date.toLocaleDateString("en-CA");
-          const hasJob = jobs.some((job) => job.deadline === d);
+          const hasJob = (jobs || []).some((job) => job.deadline === d);
           return hasJob ? (
             <div className="mt-1 w-2 h-2 bg-blue-500 rounded-full mx-auto" />
           ) : null;

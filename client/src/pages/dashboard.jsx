@@ -1,20 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import CalendarView from "../components/calendarview";
 import lightBg from "../assets/bg-light.jpg";
 import darkBg from "../assets/bg-dark.jpg";
+import { getJobs, addJob, updateJob, deleteJob } from '../services/jobService';
+
 
 const Dashboard = () => {
-  const [jobs, setJobs] = useState([
-    {
-      id: 1,
-      company: "Google",
-      position: "Frontend Developer",
-      status: "Interviewing",
-      deadline: "2025-06-20",
-      notes: "Phone interview scheduled",
-    },
-  ]);
+  const [jobs, setJobs] = useState([]);
+
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const data = await getJobs();
+        setJobs(data);
+      } catch (error) {
+        console.error('Error fetching jobs:', error.response?.data || error.message);
+        toast.error('Failed to fetch jobs');
+      }
+    };
+
+    fetchJobs();
+  }, []);
 
   const [statusFilter, setStatusFilter] = useState("All");
   const [editingJob, setEditingJob] = useState(null);
@@ -23,6 +31,8 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [selectedNote, setSelectedNote] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [form, setForm] = useState({
     company: "",
     position: "",
@@ -32,37 +42,60 @@ const Dashboard = () => {
   });
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const { name, value } = e.target;
+  setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleDelete = (id) => {
-  const confirmed = window.confirm("Are you sure you want to delete this job?");
-  if (confirmed) {
-  setJobs(jobs.filter((job) => job.id !== id));
-  toast("Job deleted.", { icon: "🗑️" });
+  const handleAddJob = async (jobData) => {
+    try {
+      const newJob = await addJob(jobData);
+      setJobs((prev) => [...prev, newJob]);
+      toast.success('Job added successfully');
+    } catch (error) {
+      console.error('Error adding job:', error.response?.data || error.message);
+      toast.error('Failed to add job');
+    }
+  };
+
+  const handleUpdateJob = async (id, updatedData) => {
+    try {
+      const updatedJob = await updateJob(id, updatedData);
+      setJobs((prev) => prev.map((job) => (job._id === id ? updatedJob : job)));
+      toast.success('Job updated successfully');
+    } catch (error) {
+      console.error('Error updating job:', error.response?.data || error.message);
+      toast.error('Failed to update job');
+    }
+  };
+
+  const handleDeleteJob = async (id) => {
+    try {
+      await deleteJob(id);
+      setJobs((prev) => prev.filter((job) => job._id !== id));
+      toast.success('Job deleted successfully');
+    } catch (error) {
+      console.error('Error deleting job:', error.response?.data || error.message);
+      toast.error('Failed to delete job');
+    }
+  };
+
+
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    if (editingJob) {
+      await handleUpdateJob(editingJob._id, form);
+    } else {
+      await handleAddJob(form);
+    }
+    setForm({ company: "", position: "", status: "Applied", deadline: "", notes: "" });
+    setEditingJob(null);
+    setShowModal(false);
+  } catch (error) {
+    toast.error('Error saving job');
   }
   };
 
-  const handleSubmit = (e) => {
-  e.preventDefault();
-
-  if (editingJob) {
-  const updatedJobs = jobs.map((job) =>
-    job.id === editingJob.id ? { ...form, id: editingJob.id } : job
-  );
-  setJobs(updatedJobs);
-  toast.success("Job updated!");
-    } else {
-  const newJob = { ...form, id: Date.now() };
-  setJobs([...jobs, newJob]);
-  toast.success("Job added!");
-    }
-
-  // Reset and close
-  setForm({ company: "", position: "", status: "Applied", deadline: "", notes: "" });
-  setEditingJob(null);
-  setShowModal(false);
-  };
 
   
 
@@ -126,7 +159,7 @@ const Dashboard = () => {
         </div>
         <div className="flex flex-wrap gap-4 mb-4">
         {["Applied", "Interviewing", "Offer", "Rejected"].map((status) => {
-            const count = jobs.filter((job) => job.status === status).length;
+            const count = jobs?.filter((job) => job.status === status).length || 0;
             return (
             <div
                 key={status}
@@ -151,16 +184,16 @@ const Dashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {jobs.filter((job) =>
+            {(jobs || []).filter((job) =>
                     statusFilter === "All" ? true : job.status === statusFilter
-                )
+                ) 
                 .filter((job) =>
                     job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     job.position.toLowerCase().includes(searchQuery.toLowerCase())
-                )
+                ) 
                 .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
                 .map((job) => (
-              <tr key={job.id} className="border-t">
+              <tr key={job._id} className="border-t">
                 <td className="p-4">{job.company}</td>
                 <td className="p-4">{job.position}</td>
                 <td className="p-4">
@@ -175,7 +208,7 @@ const Dashboard = () => {
                     {job.status}
                   </span>
                 </td>
-                <td className="p-4">{job.deadline}</td>
+                <td className="p-4">{job.deadline ? job.deadline.substring(0, 10) : "N/A"}</td>
                 <td
                   className="max-w-xs truncate whitespace-nowrap overflow-hidden cursor-pointer text-blue-600 hover:underline"
                   onClick={() => {
@@ -198,7 +231,7 @@ const Dashboard = () => {
                     Edit 📝
                 </button>
                 <button
-                    onClick={() => handleDelete(job.id)}
+                    onClick={() => handleDeleteJob(job._id)}
                     className="text-red-600 hover:underline"
                 >
                     Delete 🗑️
