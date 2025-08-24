@@ -10,7 +10,6 @@ const api = axios.create({
 // ✅ Add interceptor to attach token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
-  console.log('Token from localStorage:', token); // Debug
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
