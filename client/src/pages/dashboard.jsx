@@ -208,7 +208,9 @@ const Dashboard = () => {
                     {job.status}
                   </span>
                 </td>
-                <td className="p-4">{job.deadline ? job.deadline.substring(0, 10) : "N/A"}</td>
+                <td className="p-4">
+                  {job.deadline ? new Date(job.deadline).toLocaleDateString("en-CA") : "N/A"}
+                </td>
                 <td
                   className="max-w-xs truncate whitespace-nowrap overflow-hidden cursor-pointer text-blue-600 hover:underline"
                   onClick={() => {
